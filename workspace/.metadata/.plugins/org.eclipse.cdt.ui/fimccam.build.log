@@ -1,0 +1,99 @@
+10:18:26 **** Incremental Build of configuration Debug for project fimccam ****
+make all 
+Building file: ../cam_fimc.c
+Invoking: Cross GCC Compiler
+arm-linux-gcc -I/usr/include -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"cam_fimc.d" -MT"cam_fimc.d" -o "cam_fimc.o" "../cam_fimc.c"
+cc1: warning: include location "/usr/include" is unsafe for cross-compilation
+In file included from ../cam_fimc.c:14:
+/usr/include/pthread.h:665: warning: '__regparm__' attribute directive ignored
+/usr/include/pthread.h:677: warning: '__regparm__' attribute directive ignored
+/usr/include/pthread.h:722: warning: '__regparm__' attribute directive ignored
+../cam_fimc.c:47: warning: backslash and newline separated by space
+../cam_fimc.c: In function 'open_lcd_device':
+../cam_fimc.c:158: warning: implicit declaration of function 'ioctl'
+../cam_fimc.c:150: warning: unused variable 'err'
+../cam_fimc.c: In function 'fb_wait_for_vsync':
+../cam_fimc.c:204: warning: implicit declaration of function 'err'
+../cam_fimc.c: In function 'cam_reqbufs':
+../cam_fimc.c:274: warning: format '%lx' expects type 'long unsigned int', but argument 2 has type 'void *'
+../cam_fimc.c:213: warning: unused variable 'n_buffers'
+../cam_fimc.c: In function 'fimc0_reqbufs':
+../cam_fimc.c:378: warning: format '%08lx' expects type 'long unsigned int', but argument 2 has type 'BUFTYPE'
+../cam_fimc.c:286: warning: unused variable 'reqbuf'
+../cam_fimc.c:285: warning: unused variable 'ctrl'
+../cam_fimc.c:283: warning: unused variable 'err'
+../cam_fimc.c:282: warning: unused variable 'i'
+../cam_fimc.c: In function 'cam_setfmt':
+../cam_fimc.c:462: warning: unused variable 'stream'
+../cam_fimc.c:461: warning: unused variable 'ctrl'
+../cam_fimc.c:460: warning: unused variable 'input'
+../cam_fimc.c:455: warning: unused variable 'err'
+../cam_fimc.c: In function 'cam_setrate':
+../cam_fimc.c:510: warning: unused variable 'ret'
+../cam_fimc.c: In function 'fimc0_setfmt':
+../cam_fimc.c:535: warning: unused variable 'stream'
+../cam_fimc.c:534: warning: unused variable 'ctrl'
+../cam_fimc.c:533: warning: unused variable 'input'
+../cam_fimc.c:531: warning: unused variable 'cap'
+../cam_fimc.c:530: warning: unused variable 'fmt'
+../cam_fimc.c:528: warning: unused variable 'err'
+../cam_fimc.c: In function 'cam_cap_dbuf':
+../cam_fimc.c:719: warning: unused variable 'ret'
+../cam_fimc.c:718: warning: unused variable 'type'
+../cam_fimc.c:717: warning: unused variable 'i'
+../cam_fimc.c: In function 'fimc0_out_qbuf':
+../cam_fimc.c:787: warning: unused variable 'buf'
+../cam_fimc.c:785: warning: unused variable 'type'
+../cam_fimc.c:784: warning: unused variable 'i'
+../cam_fimc.c: In function 'fimc0_out_dbuf':
+../cam_fimc.c:841: warning: unused variable 'buf'
+../cam_fimc.c:839: warning: unused variable 'type'
+../cam_fimc.c:838: warning: unused variable 'i'
+../cam_fimc.c: In function 'fimc0_cap_dbuf':
+../cam_fimc.c:868: warning: unused variable 'buf'
+../cam_fimc.c:866: warning: unused variable 'type'
+../cam_fimc.c:865: warning: unused variable 'i'
+../cam_fimc.c: In function 'fimc0_cap_qbuf':
+../cam_fimc.c:933: warning: unused variable 'count'
+../cam_fimc.c: In function 'mainloop':
+../cam_fimc.c:1065: warning: unused variable 'index'
+../cam_fimc.c:1024: warning: unused variable 'tv'
+../cam_fimc.c:1020: warning: unused variable 'nfds'
+../cam_fimc.c:1018: warning: unused variable 'frameTime'
+../cam_fimc.c:1018: warning: unused variable 'selectTime'
+../cam_fimc.c:1017: warning: unused variable 'finishTime'
+../cam_fimc.c:1017: warning: unused variable 'startTime'
+../cam_fimc.c: In function 'close_camer_device':
+../cam_fimc.c:1101: warning: implicit declaration of function 'close'
+../cam_fimc.c: In function 'display_thread':
+../cam_fimc.c:1129: warning: no return statement in function returning non-void
+../cam_fimc.c: In function 'main':
+../cam_fimc.c:1140: warning: implicit declaration of function 'sleep'
+../cam_fimc.c: In function 'process_fimc0_capture':
+../cam_fimc.c:1013: warning: control reaches end of non-void function
+../cam_fimc.c: In function 'fimc0_cap_qbuf':
+../cam_fimc.c:955: warning: control reaches end of non-void function
+../cam_fimc.c: In function 'fimc0_out_dbuf':
+../cam_fimc.c:861: warning: control reaches end of non-void function
+../cam_fimc.c: In function 'fimc0_out_qbuf':
+../cam_fimc.c:834: warning: control reaches end of non-void function
+../cam_fimc.c: In function 'init_device':
+../cam_fimc.c:612: warning: control reaches end of non-void function
+../cam_fimc.c: In function 'fimc0_setfmt':
+../cam_fimc.c:602: warning: control reaches end of non-void function
+../cam_fimc.c: In function 'cam_reqbufs':
+../cam_fimc.c:279: warning: control reaches end of non-void function
+../cam_fimc.c: In function 'display_format':
+../cam_fimc.c:96: warning: control reaches end of non-void function
+../cam_fimc.c: At top level:
+../cam_fimc.c:1116: warning: 'display_thread' defined but not used
+Finished building: ../cam_fimc.c
+ 
+Building target: fimccam
+Invoking: Cross GCC Linker
+arm-linux-gcc  -o "fimccam"  ./cam_fimc.o   -lpthread
+Finished building target: fimccam
+ 
+
+10:18:27 Build Finished (took 1s.590ms)
+

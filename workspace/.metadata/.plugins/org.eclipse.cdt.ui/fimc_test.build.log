@@ -1,0 +1,33 @@
+21:16:32 **** Incremental Build of configuration Debug for project fimc_test ****
+make all 
+Building file: ../test.c
+Invoking: Cross GCC Compiler
+arm-linux-gcc -I/usr/include -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"test.d" -MT"test.d" -o "test.o" "../test.c"
+cc1: warning: include location "/usr/include" is unsafe for cross-compilation
+In file included from ../test.c:20:
+/usr/include/pthread.h:665: warning: '__regparm__' attribute directive ignored
+/usr/include/pthread.h:677: warning: '__regparm__' attribute directive ignored
+/usr/include/pthread.h:722: warning: '__regparm__' attribute directive ignored
+../test.c: In function 'fimc0_setfmt':
+../test.c:101: warning: implicit declaration of function 'ioctl'
+../test.c:92: warning: unused variable 'err'
+../test.c: In function 'main':
+../test.c:189: warning: implicit declaration of function 'sleep'
+../test.c: In function 'fimc0_setfmt':
+../test.c:183: warning: control reaches end of non-void function
+../test.c: At top level:
+../test.c:28: warning: 'vinfo' defined but not used
+../test.c:29: warning: 'finfo' defined but not used
+../test.c:30: warning: 'lcd_buf_size' defined but not used
+../test.c:31: warning: 'fb_buf' defined but not used
+../test.c:57: warning: 'fimc0_cap_index' defined but not used
+Finished building: ../test.c
+ 
+Building target: fimc_test
+Invoking: Cross GCC Linker
+arm-linux-gcc  -o "fimc_test"  ./test.o   
+Finished building target: fimc_test
+ 
+
+21:16:33 Build Finished (took 1s.228ms)
+
