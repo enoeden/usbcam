@@ -1,14 +1,12 @@
-14:57:06 **** Incremental Build of configuration Debug for project fimc_cam ****
+20:38:56 **** Incremental Build of configuration Debug for project fimc_cam ****
 make all 
 Building file: ../cam_fimc.c
 Invoking: Cross GCC Compiler
 arm-linux-gcc -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"cam_fimc.d" -MT"cam_fimc.d" -o "cam_fimc.o" "../cam_fimc.c"
-../cam_fimc.c: In function 'open_lcd_device':
-../cam_fimc.c:230: warning: format '%lx' expects type 'long unsigned int', but argument 2 has type 'char *'
-../cam_fimc.c: In function 'fimc0_reqbufs':
-../cam_fimc.c:606: warning: format '%08lx' expects type 'long unsigned int', but argument 2 has type 'void *'
+../cam_fimc.c: In function 'cam_cap_dbuf':
+../cam_fimc.c:657: warning: unused variable 'ret'
 ../cam_fimc.c: In function 'fimc0_out_dbuf':
-../cam_fimc.c:809: warning: 'ret' may be used uninitialized in this function
+../cam_fimc.c:769: warning: 'ret' may be used uninitialized in this function
 Finished building: ../cam_fimc.c
  
 Building target: fimc_cam
@@ -17,5 +15,5 @@ arm-linux-gcc  -o "fimc_cam"  ./cam_fimc.o
 Finished building target: fimc_cam
  
 
-14:57:07 Build Finished (took 1s.439ms)
+20:38:57 Build Finished (took 1s.188ms)
 

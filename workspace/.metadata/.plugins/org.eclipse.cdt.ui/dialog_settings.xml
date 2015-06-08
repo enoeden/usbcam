@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <section name="Workbench">
 	<item value="Default C source template" key="LastUsedSourceTemplate"/>
+	<item value="Default C++ header template" key="LastUsedHeaderTemplate"/>
 	<section name="completion_proposal_size">
 	</section>
 	<section name="org.eclipse.cdt.ui.text.hover.CMacroExpansionExploration.internal">
-		<item value="692" key="size.width"/>
-		<item value="156" key="size.height"/>
+		<item value="686" key="size.width"/>
+		<item value="150" key="size.height"/>
 	</section>
 	<section name="org.eclipse.cdt.ui.OPEN_ACTION_SELECTION_DIALOG_SECTION">
 		<item value="448" key="DIALOG_WIDTH"/>
 		<item value="153" key="DIALOG_Y_ORIGIN"/>
-		<item value="411" key="DIALOG_HEIGHT"/>
 		<item value="498" key="DIALOG_X_ORIGIN"/>
+		<item value="411" key="DIALOG_HEIGHT"/>
 		<item value="1|Sans|10.0|0|GTK|1|" key="DIALOG_FONT_NAME"/>
 	</section>
 	<section name="org.eclipse.cdt.ui.text.hover.CMacroExpansionExploration">

@@ -17,23 +17,29 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include <errno.h>
+
 #include <stdlib.h>
 #include <malloc.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <time.h>
-#include <sys/mman.h>
 #include <assert.h>
+#include <time.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 #include <linux/videodev2.h>
 #include <linux/fb.h>
 #include <pthread.h>
 #include <poll.h>
 #include <semaphore.h>
 #include <sys/ioctl.h>
-#include <unistd.h>
+
 #include "videodev2_samsung.h"
+#include "debug.h"
+
+#include "log.h"
+#define LEVEL 1
+
 #define TimeOut 5
 
 #define CapNum 10
@@ -51,25 +57,6 @@
 
 #define CapDelay 100 * 1000
 
-#define CLEAR( x ) memset( &( x ), 0, sizeof( x ) )
-
-#define MIN( x, y )			( ( x ) < ( y ) ? ( x ) : ( y ) )
-#define MAX( x, y )			( ( x ) > ( y ) ? ( x ) : ( y ) )
-#define CLAMP( x, l, h )	( ( x ) < ( l ) ? ( l ) : ( ( x ) > ( h ) ? ( h ) : ( x ) ) )
-#define ERRSTR strerror( errno )
-
-#define LOG( ... ) fprintf( stderr, __VA_ARGS__ )
-
-#define ERR( ... )			__info( "Error", __FILE__, __LINE__, __VA_ARGS__ )
-#define ERR_ON( cond, ... ) ( ( cond ) ? ERR( __VA_ARGS__ ) : 0 )
-
-#define CRIT( ... ) \
-    do { \
-		__info( "Critical", __FILE__, __LINE__, __VA_ARGS__ ); \
-		exit( EXIT_FAILURE ); \
-	} while( 0 )
-#define CRIT_ON( cond, ... ) do { if( cond ){ CRIT( __VA_ARGS__ ); } } while( 0 )
-
 typedef struct {
 	void *start;
 	int length;
@@ -86,16 +73,17 @@ struct {
 	unsigned int type;
 	char *name;
 } enum_fmt[] = { { V4L2_CAP_VIDEO_CAPTURE, "V4L2_CAP_VIDEO_CAPTURE" }, {
-V4L2_CAP_VIDEO_OUTPUT, "V4L2_CAP_VIDEO_OUTPUT" }, {
-V4L2_CAP_VIDEO_OVERLAY, "V4L2_CAP_VIDEO_OVERLAY" }, { 0x00001000,
+		V4L2_CAP_VIDEO_OUTPUT, "V4L2_CAP_VIDEO_OUTPUT" }, {
+		V4L2_CAP_VIDEO_OVERLAY, "V4L2_CAP_VIDEO_OVERLAY" }, { 0x00001000,
 		"V4L2_CAP_VIDEO_CAPTURE_MPLANE" }, { 0x00002000,
 		"V4L2_CAP_VIDEO_OUTPUT_MPLANE" }, { 0x00008000,
 		"V4L2_CAP_VIDEO_M2M_MPLANE" }, { 0x00004000, "V4L2_CAP_VIDEO_M2M" }, {
-V4L2_CAP_STREAMING, "V4L2_CAP_STREAMING" }, };
+		V4L2_CAP_STREAMING, "V4L2_CAP_STREAMING" } };
 
 BUFTYPE *fimc0_src_buf;
 BUFTYPE *cam_buffers;
 BUFTYPE *fimc0_dst_buf;
+
 static int n_buffer = 0;
 void *fimc_in = NULL;
 void *fimc_out = NULL;
@@ -128,25 +116,6 @@ int display_format(int pixelformat) {
 	return 0;
 }
 
-/***********************************************************
- * Function:       //
- * Description:    //
- * Others:         //
- ***********************************************************/
-static inline int __info(const char *prefix, const char *file, int line,
-		const char *fmt, ...) {
-	int errsv = errno;
-	va_list va;
-
-	va_start(va, fmt);
-	fprintf( stderr, "%s(%s:%d): ", prefix, file, line);
-	vfprintf( stderr, fmt, va);
-	va_end(va);
-	errno = errsv;
-
-	return 1;
-}
-
 struct format {
 	unsigned long fourcc;
 	unsigned long width;
@@ -170,8 +139,8 @@ int open_camera_device() {
 		perror("Fail to open");
 		exit( EXIT_FAILURE);
 	}
-
-	printf("open cam & fimc0 success %d\n", fd);
+	log(DEBUG,"open cam & fimc0 success %d\n", fd);
+	//printf("open cam & fimc0 success %d\n", fd);
 	return fd;
 }
 
@@ -188,7 +157,8 @@ int open_lcd_device() {
 		perror("Fail to open");
 		exit( EXIT_FAILURE);
 	}
-	printf("open lcd success %d\n", fd);
+	log(DEBUG,"open lcd success %d\n", fd);
+	//printf("open lcd success %d\n", fd);
 
 	if (-1 == ioctl(fd, FBIOGET_FSCREENINFO, &finfo)) {
 		perror("Fail to ioctl:FBIOGET_FSCREENINFO\n");
@@ -199,10 +169,10 @@ int open_lcd_device() {
 		exit( EXIT_FAILURE);
 	}
 	lcd_buf_size = vinfo.xres * vinfo.yres * vinfo.bits_per_pixel / 8;
-	printf(
-			"vinfo.xres:%d, vinfo.yres:%d, vinfo.bits_per_pixel:%d, lcd_buf_size:%d, finfo.line_length:%d\n",
-			vinfo.xres, vinfo.yres, vinfo.bits_per_pixel, lcd_buf_size,
-			finfo.line_length);
+	log(INFO,
+				"vinfo.xres:%d, vinfo.yres:%d, vinfo.bits_per_pixel:%d, lcd_buf_size:%d, finfo.line_length:%d\n",
+				vinfo.xres, vinfo.yres, vinfo.bits_per_pixel, lcd_buf_size,
+				finfo.line_length);
 
 	lcd_fd = fd;
 
@@ -210,7 +180,7 @@ int open_lcd_device() {
 	vinfo.yres_virtual = vinfo.yres;
 	ret = ioctl(fd, FBIOPUT_VSCREENINFO, &vinfo);
 	if (ret < 0) {
-		printf("ioctl FBIOPUT_VSCREENINFO failed\n");
+		log(DEBUG,"ioctl FBIOPUT_VSCREENINFO failed\n");
 		return -1;
 	}
 
@@ -224,10 +194,10 @@ int open_lcd_device() {
 	}
 	ret = ioctl(lcd_fd, FBIOBLANK, FB_BLANK_UNBLANK);
 	if (ret < 0) {
-		printf("ioctl FBIOBLANK failed\n");
+		log(ERROR,"ioctl FBIOBLANK failed\n");
 		return -1;
 	}
-	printf("fb address %lx\n", fb_buf);
+	log(INFO,"fb address %lx\n", (long int)fb_buf);
 	return fd;
 }
 
@@ -256,12 +226,12 @@ int cam_setfmt() {
 	}
 
 	if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
-		printf("The Current device is not a video capture device\n");
+		log(ERROR,"The Current device is not a video capture device\n");
 		exit( EXIT_FAILURE);
 	}
 
 	if (!(cap.capabilities & V4L2_CAP_STREAMING)) {
-		printf("The Current device does not support streaming i/o\n");
+		log(ERROR,"The Current device does not support streaming i/o\n");
 		exit( EXIT_FAILURE);
 	}
 
@@ -273,13 +243,13 @@ int cam_setfmt() {
 	stream_fmt.fmt.pix.field = V4L2_FIELD_INTERLACED;
 
 	if (-1 == ioctl(cam_fd, VIDIOC_S_FMT, &stream_fmt)) {
-		printf("Can't set the fmt\n");
+		log(ERROR,"Can't set the fmt\n");
 		perror("Fail to ioctl\n");
 		exit( EXIT_FAILURE);
 	}
-	printf("VIDIOC_S_FMT successfully\n");
+	log(DEBUG,"VIDIOC_S_FMT successfully\n");
 
-	printf("%s: -\n", __func__);
+	log(DEBUG,"%s: -\n", __func__);
 	return 0;
 }
 
@@ -301,7 +271,7 @@ int cam_setrate() {
 
 	err = ioctl(cam_fd, VIDIOC_S_PARM, &stream);
 	if (err < 0) {
-		printf("FimcV4l2 start: error %d, VIDIOC_S_PARM", err);
+		log(ERROR,"FimcV4l2 start: error %d, VIDIOC_S_PARM", err);
 	}
 
 	return 0;
@@ -315,7 +285,7 @@ int cam_setrate() {
 int cam_reqbufs() {
 	struct v4l2_requestbuffers req;
 	int i;
-	printf("%s: +\n", __func__);
+	log(DEBUG,"%s: +\n", __func__);
 	CLEAR(req);
 
 	req.count = ReqButNum;
@@ -328,7 +298,7 @@ int cam_reqbufs() {
 					"user pointer i/o\n", "campture");
 			exit( EXIT_FAILURE);
 		} else {
-			printf("VIDIOC_REQBUFS");
+			log(INFO,"VIDIOC_REQBUFS");
 			exit( EXIT_FAILURE);
 		}
 	}
@@ -361,13 +331,13 @@ int cam_reqbufs() {
 
 		if ( MAP_FAILED == cam_buffers[i].start) {
 			perror("Fail to mmap\n");
-			printf("%d\n", i);
+			log(ERROR,"%d\n", i);
 			exit( EXIT_FAILURE);
 		}
-		printf("cam_capture rebuf::%lx\n", (long) cam_buffers[i].start);
+		log(DEBUG,"cam_capture rebuf::%lx\n", (long) cam_buffers[i].start);
 	}
 
-	printf("%s: -\n", __func__);
+	log(DEBUG,"%s: -\n", __func__);
 	return 0;
 }
 
@@ -381,7 +351,7 @@ int fimc0_setfmt() {
 	struct v4l2_capability cap;
 	struct v4l2_format stream_fmt;
 	struct v4l2_crop crop;
-	printf("%s: +\n", __func__);
+	log(DEBUG,"%s: +\n", __func__);
 	CLEAR(cap);
 
 	ret = ioctl(fimc0_fd, VIDIOC_QUERYCAP, &cap);
@@ -389,14 +359,13 @@ int fimc0_setfmt() {
 		return -errno;
 	}
 
-	printf("\ncheck the support capabilities\n");
+	log(INFO,"\ncheck the support capabilities\n");
 	int i;
 	for (i = 0; i < CHECKNUM; i++) {
 		if (cap.capabilities & enum_fmt[i].type) {
-			printf("%s\n", enum_fmt[i].name);
+			log(INFO,"%s\n", enum_fmt[i].name);
 		}
 	}
-	printf("\n");
 
 	CLEAR(stream_fmt);
 	stream_fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -405,8 +374,8 @@ int fimc0_setfmt() {
 	if (ERR_ON(ret < 0, "cam: VIDIOC_G_FMT: %s\n", ERRSTR)) {
 		return -errno;
 	}
-	printf("%s -cam VIDIOC_G_FMT ok+\n", __func__);
-	printf("cam w:%d h:%d pixformat \n", stream_fmt.fmt.pix.width,
+	log(DEBUG,"%s -cam VIDIOC_G_FMT ok+\n", __func__);
+	log(INFO,"cam w:%d h:%d pixformat \n", stream_fmt.fmt.pix.width,
 			stream_fmt.fmt.pix.height);
 
 	CLEAR(stream_fmt);
@@ -416,8 +385,8 @@ int fimc0_setfmt() {
 	if (ERR_ON(ret < 0, "cam: VIDIOC_G_FMT: %s\n", ERRSTR)) {
 		return -errno;
 	}
-	printf("%s -fimc0 VIDIOC_G_FMT ok+\n", __func__);
-	printf("fimc0 w:%d h:%d pixformat= %c%c%c%c \n", stream_fmt.fmt.pix.width,
+	log(DEBUG,"%s -fimc0 VIDIOC_G_FMT ok+\n", __func__);
+	log(DEBUG,"fimc0 w:%d h:%d pixformat= %c%c%c%c \n", stream_fmt.fmt.pix.width,
 			stream_fmt.fmt.pix.height, stream_fmt.fmt.pix.pixelformat & 0xff,
 			(stream_fmt.fmt.pix.pixelformat >> 8) & 0xff,
 			(stream_fmt.fmt.pix.pixelformat >> 16) & 0xff,
@@ -432,14 +401,28 @@ int fimc0_setfmt() {
 	stream_fmt.fmt.pix.width = CapWidth;
 	stream_fmt.fmt.pix.height = CapHeight;
 	stream_fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
-	printf("%s -fimc0 ready to set+\n", __func__);
+	log(DEBUG,"%s -fimc0 ready to set+\n", __func__);
 
 	ret = ioctl(fimc0_fd, VIDIOC_S_FMT, &stream_fmt);
 	if (ERR_ON(ret < 0, "fimc0: VIDIOC_S_FMT: %s\n", ERRSTR)) {
 		return -errno;
 	}
 
-	printf("%s -fimc0 set done+\n", __func__);
+	log(DEBUG,"%s -fimc0 set done+\n", __func__);
+
+	CLEAR(stream_fmt);
+		stream_fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+		/* get format from fimc0 */
+		ret = ioctl(fimc0_fd, VIDIOC_G_FMT, &stream_fmt);
+		if (ERR_ON(ret < 0, "cam: VIDIOC_G_FMT: %s\n", ERRSTR)) {
+			return -errno;
+		}
+		log(INFO,"%s -fimc0 VIDIOC_G_FMT \n", __func__);
+		log(INFO,"fimc0 w:%d h:%d pixformat= %c%c%c%c \n", stream_fmt.fmt.pix.width,
+				stream_fmt.fmt.pix.height, stream_fmt.fmt.pix.pixelformat & 0xff,
+				(stream_fmt.fmt.pix.pixelformat >> 8) & 0xff,
+				(stream_fmt.fmt.pix.pixelformat >> 16) & 0xff,
+				(stream_fmt.fmt.pix.pixelformat >> 24) & 0xff);
 
 	/* set format on fimc0 capture */
 	/*dst fmt will be determined by stream_fmt.fmt.pix.field this will be RGB32 but lcd support only RGB565 now.*/
@@ -453,7 +436,7 @@ int fimc0_setfmt() {
 		return -errno;
 	}
 
-	printf("%s -\n", __func__);
+	log(DEBUG,"%s -\n", __func__);
 	return 0;
 }
 
@@ -472,7 +455,7 @@ int fimc0_reqbufs() {
 	struct v4l2_buffer b;
 	CLEAR(b);
 	int n;
-	printf("%s: +\n", __func__);
+	log(DEBUG,"%s: +\n", __func__);
 	/*dst */
 
 	fimc0_dst_buf = calloc( ReqButNum, sizeof(BUFTYPE));
@@ -481,7 +464,14 @@ int fimc0_reqbufs() {
 		return -errno;
 	}
 
-	/*VIDIOC_S_FBUF to get ctx->fbuf info*/
+	/*VIDIOC_S_FBUF to set ctx->fbuf info*/
+	/*关于dst format  有函数fimc_outdev_set_format()设置
+	 * 对于FIMC_OVLY_DMA_AUTO 及 FIMC_OVLY_DMA_MANUAL 驱动 更具 ctx->pix.field == V4L2_FIELD_NONE 等 选择
+	 * pixfmt.pixelformat = V4L2_PIX_FMT_RGB32 没有RGB16的选项
+	  * 对于 FIMC_OVLY_NONE_SINGLE_BUF:FIMC_OVLY_NONE_MULTI_BUF: 驱动根据 pixfmt.pixelformat = ctx->fbuf.fmt.pixelformat;、
+	  * 最终调用 fimc_outdev_set_dst_format(ctrl, &pixfmt);
+	 * */
+
 	CLEAR(fb);
 	fb.fmt.height = 480;
 	fb.fmt.width = 800;
@@ -494,7 +484,7 @@ int fimc0_reqbufs() {
 	CLEAR(fmt);
 	fmt.type = V4L2_BUF_TYPE_VIDEO_OVERLAY;
 	fmt.fmt.win.w.height = 480;
-	fmt.fmt.win.w.width = 800;
+	fmt.fmt.win.w.width = 400;
 	fmt.fmt.win.w.left = 0;
 	fmt.fmt.win.w.top = 0;
 	if (-1 == ioctl(fimc0_fd, VIDIOC_S_FMT, &fmt)) {
@@ -520,14 +510,14 @@ int fimc0_reqbufs() {
 			exit( EXIT_FAILURE);
 		}
 		fimc0_dst_buf[n].start = (void *) ctrl.value;
-		printf("fimc0 dst vaddr%d :%lx\n", n, (long) fimc0_dst_buf[n].start);
+		log(INFO,"fimc0 dst vaddr%d :%lx\n", n, (long) fimc0_dst_buf[n].start);
 		if (!fimc0_dst_buf[n].start) {
-			printf("Failed mmap buffer %d for %d\n", n, fimc0_fd);
+			log(ERROR,"Failed mmap buffer %d for %d\n", n, fimc0_fd);
 			return -1;
 		}
 	}
 	fimc0_dst_buf_length = 800 * 480 * 4;
-	printf("fimc0 :dst buf .length:%d\n", fimc0_dst_buf_length);
+	log(INFO,"fimc0 :dst buf .length:%d\n", fimc0_dst_buf_length);
 
 	/* request buffers for FIMC0 */
 	rb.count = ReqButNum;
@@ -538,75 +528,48 @@ int fimc0_reqbufs() {
 	if (ERR_ON(ret < 0, "fimc0: VIDIOC_REQBUFS: %s\n", ERRSTR)) {
 		return -errno;
 	}
-	printf("fimc0 output_buf_num:%d\n", rb.count);
+	log(INFO,"fimc0 output_buf_num:%d\n", rb.count);
 
 	n_buffer = rb.count;
 
-/*	fimc0_src_buf = calloc( ReqButNum, sizeof(BUFTYPE));
-	if (ERR_ON(fimc0_src_buf == NULL, "fimc0_cap_buf: VIDIOC_QUERYBUF: %s\n",
-			ERRSTR)) {
-		return -errno;
+	fimc0_src_buf = calloc(rb.count, sizeof(BUFTYPE));
+	if (fimc0_src_buf == NULL) {
+		fprintf( stderr, "Out of memory\n");
+		exit( EXIT_FAILURE);
 	}
-
-	unsigned int page_size;
-	page_size = getpagesize();
-	fimc0_src_buf_length = 600 * 480 * 2;
-	fimc0_src_buf_length = (fimc0_src_buf_length + page_size - 1)
-			& ~(page_size - 1);
-	printf("%s, line:%d,page_size:%d,fimc0_out_buf_length:%d\n", __func__,
-	__LINE__, page_size, fimc0_src_buf_length);
-
-	for (n = 0; n < ReqButNum; ++n) {
-
-		fimc0_src_buf[n].start = (void *) memalign(
-		(size_t) page_size, (size_t) fimc0_src_buf_length); //malloc(fimc0_out_buf_length);
-		fimc0_src_buf[n].length = 640 * 480 * 2;
-		if (fimc0_src_buf[n].start != NULL)
-			printf("fimc0_out userptr reqbuf start:0x%08x,length:%d\n",
-					fimc0_src_buf[n].start, fimc0_src_buf_length);
-	}
-
-	*/
-	 fimc0_src_buf = calloc(rb.count, sizeof(BUFTYPE));
-	 if (fimc0_src_buf == NULL) {
-	 fprintf( stderr, "Out of memory\n");
-	 exit( EXIT_FAILURE);
-	 }
-	 printf("%s, fimc0_src_buf request successfully\n", __func__);
+	log(DEBUG,"%s, fimc0_src_buf request successfully\n", __func__);
 
 	/* mmap DMABUF */
-	for( n = 0; n < ReqButNum; ++n )
-	 {
-	 b.index	   = n;
-	 b.length   = 1; //set by driver
-	 b.type	   = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-	 b.memory   = V4L2_MEMORY_MMAP;
-	 b.m.offset = 0; //set by driver  guess
-	 ret		   = ioctl( fimc0_fd, VIDIOC_QUERYBUF, &b );
+	for (n = 0; n < ReqButNum; ++n) {
+		b.index = n;
+		b.length = 1; //set by driver
+		b.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+		b.memory = V4L2_MEMORY_MMAP;
+		b.m.offset = 0; //set by driver  guess
+		ret = ioctl(fimc0_fd, VIDIOC_QUERYBUF, &b);
 
-	 if( ERR_ON( ret < 0, "fimc0: VIDIOC_REQBUFS: %s\n", ERRSTR ) )
-	 {
-	 exit( EXIT_FAILURE );
-	 }
+		if (ERR_ON(ret < 0, "fimc0: VIDIOC_REQBUFS: %s\n", ERRSTR)) {
+			exit( EXIT_FAILURE);
+		}
 
-	 printf( "fimc0 querybuf %d: %d,%d\n", n, b.length, b.m.offset );
-	 fimc0_src_buf[n].start = mmap( NULL, b.length,
-	 PROT_READ | PROT_WRITE,
-	 MAP_SHARED, fimc0_fd, b.m.offset );
+		log(INFO,"fimc0 querybuf %d: %d,%d\n", n, b.length, b.m.offset);
+		fimc0_src_buf[n].start = mmap( NULL, b.length,
+		PROT_READ | PROT_WRITE,
+		MAP_SHARED, fimc0_fd, b.m.offset);
 
-	 fimc0_src_buf[n].length = b.length;
-	 if( fimc0_src_buf[n].start == MAP_FAILED )
-	 {
-	 printf( "Failed mmap buffer %d for %d\n", n, fimc0_fd );
-	 return -1;
-	 }
+		fimc0_src_buf[n].length = b.length;
+		if (fimc0_src_buf[n].start == MAP_FAILED) {
+			log(ERROR,"Failed mmap buffer %d for %d\n", n, fimc0_fd);
+			return -1;
+		}
 
-	 fimc0_src_buf_length = b.length;
-	 printf( "fimc0 querybuf:0x%08lx,%d,%d\n", fimc0_src_buf[n].start,
-	 fimc0_src_buf_length, b.m.offset );
-	 }
+		fimc0_src_buf_length = b.length;
+		log(INFO,"fimc0 querybuf:0x%08lx,%d,%d\n", (long int)fimc0_src_buf[n].start,
+				fimc0_src_buf_length, b.m.offset);
 
-	printf("%s -\n", __func__);
+	}
+
+	log(DEBUG,"%s -\n", __func__);
 	return 0;
 }
 
@@ -622,7 +585,7 @@ int init_device() {
 	fimc0_reqbufs();
 
 	////cam_setrate();
-	printf("%s -\n", __func__);
+	log(DEBUG,"%s -\n", __func__);
 	return 0;
 }
 
@@ -637,7 +600,7 @@ int start_capturing(int cam_fd) {
 	int ret;
 
 	////  struct v4l2_plane plane;
-	printf("%s +\n", __func__);
+	log(DEBUG,"%s +\n", __func__);
 
 	for (i = 0; i < n_buffer; i++) {
 		struct v4l2_buffer buf;
@@ -655,7 +618,7 @@ int start_capturing(int cam_fd) {
 
 	type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	if (-1 == ioctl(cam_fd, VIDIOC_STREAMON, &type)) {
-		printf("i = %d.\n", i);
+		log(DEBUG,"i = %d.\n", i);
 		perror("cam_fd Fail to ioctl 'VIDIOC_STREAMON'");
 		exit( EXIT_FAILURE);
 	}
@@ -665,7 +628,7 @@ int start_capturing(int cam_fd) {
 	if (ERR_ON(ret < 0, "fimc0: VIDIOC_STREAMON: %s\n", ERRSTR)) {
 		return -errno;
 	}
-	printf("%s -\n", __func__);
+	log(DEBUG,"%s -\n", __func__);
 	return 0;
 }
 
@@ -678,7 +641,7 @@ int xioctl(int fd, int request, void* argp) {
 	int r;
 	do {
 		r = ioctl(fd, request, argp);
-		printf("ret: %d, errno: %d \n",r,errno);
+		//log(ERROR,"ret: %d, errno: %d \n", r, errno);//此处 r=0 errno 是其他的错误
 	} while (-1 == r && EINTR == errno);
 
 	return r;
@@ -690,20 +653,18 @@ int xioctl(int fd, int request, void* argp) {
  * Others:         //
  ***********************************************************/
 int cam_cap_dbuf(int *index) {
-	printf("%s +\n", __func__);
+	log(DEBUG,"%s +\n", __func__);
 	struct v4l2_buffer buf;
 	int ret;
 	bzero(&buf, sizeof(buf));
 	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	buf.memory = V4L2_MEMORY_MMAP;
 	//buf.index=0;
-#if 1
-	do
-	{
-		ret = xioctl( cam_fd, VIDIOC_DQBUF, &buf );
+#if 0
+	do {
+		ret = xioctl(cam_fd, VIDIOC_DQBUF, &buf);
 
-	}
-	while( -1 == ret && EAGAIN == errno );
+	} while (-1 == ret && EAGAIN == errno);
 #else
 	if (-1 == ioctl(cam_fd, VIDIOC_DQBUF, &buf)) {
 		perror("cam Fail to ioctl 'VIDIOC_DQBUF'");
@@ -711,10 +672,10 @@ int cam_cap_dbuf(int *index) {
 	}
 #endif
 	cam_buffers[buf.index].bytesused = buf.bytesused;
-  printf("%s,Line:%d,bytesused:%d\n",__func__, __LINE__, buf.bytesused);
+	log(DEBUG,"%s,Line:%d,bytesused:%d\n", __func__, __LINE__, buf.bytesused);
 	*index = buf.index;
 
-	printf("%s -\n", __func__);
+	log(DEBUG,"%s -\n", __func__);
 	return 0;
 }
 
@@ -724,7 +685,7 @@ int cam_cap_dbuf(int *index) {
  * Others:         //
  ***********************************************************/
 int cam_cap_qbuf(int index) {
-	printf("%s +\n", __func__);
+	log(DEBUG,"%s +\n", __func__);
 	struct v4l2_buffer buf;
 
 	bzero(&buf, sizeof(buf));
@@ -738,7 +699,7 @@ int cam_cap_qbuf(int index) {
 		exit( EXIT_FAILURE);
 	}
 
-	printf("%s -\n", __func__);
+	log(DEBUG,"%s -\n", __func__);
 	return 0;
 }
 
@@ -751,7 +712,7 @@ int fimc0_out_qbuf(int index) {
 	int ret;
 	struct v4l2_buffer b;
 	//// struct v4l2_plane plane;
-	printf("%s +\n", __func__);
+	log(DEBUG,"%s +\n", __func__);
 	/* enqueue buffer to fimc0 output */
 	CLEAR(b);
 
@@ -762,7 +723,7 @@ int fimc0_out_qbuf(int index) {
 	//b.m.userptr=(long)cam_buffers[index].start;
 	//b.m.userptr = (unsigned long) fimc0_src_buf[index].start;
 
-	printf("idx : %d  fimc buf start :%lx \n", index, b.m.userptr);
+	//printf("idx : %d  fimc buf start :%lx \n", index, b.m.userptr);
 	//b.m.userptr	   = (unsigned long)fimc0_out_buf[index].start;
 	//b.length	   = (unsigned long)fimc0_out_buf[index].length;
 	//b.bytesused	   = fimc0_out_buf[index].length;
@@ -774,7 +735,7 @@ int fimc0_out_qbuf(int index) {
 	if (ERR_ON(ret < 0, "fimc0: VIDIOC_QBUF: %s\n", ERRSTR)) {
 		return -errno;
 	}
-	printf("%s -\n", __func__);
+	log(DEBUG,"%s -\n", __func__);
 	return 0;
 }
 
@@ -786,7 +747,7 @@ int fimc0_out_qbuf(int index) {
 int fimc0_out_dbuf(int *index) {
 	int ret;
 	struct v4l2_buffer b;
-	printf("%s +\n", __func__);
+	log(DEBUG,"%s +\n", __func__);
 	/* enqueue buffer to fimc0 output */
 	CLEAR(b);
 
@@ -796,20 +757,20 @@ int fimc0_out_dbuf(int *index) {
 #if 0
 	do {
 		ret = xioctl(fimc0_fd, VIDIOC_DQBUF, &b);
-		printf("ret: %d, errno: %d\n",ret,errno);
-	} while (-1 == ret && EAGAIN == errno);
+		log(ERROR,"ret: %d, errno: %d\n",ret,errno);
+	}while (-1 == ret && EAGAIN == errno);
 #else
 	if (-1 == ioctl(fimc0_fd, VIDIOC_DQBUF, &b)) {
-			printf("errno: %d\n",errno);
-			perror("fimc Fail to ioctl 'VIDIOC_DQBUF'");
-			exit( EXIT_FAILURE);
-		}
+		log(ERROR,"errno: %d\n", errno);
+		perror("fimc Fail to ioctl 'VIDIOC_DQBUF'");
+		exit( EXIT_FAILURE);
+	}
 #endif
 	*index = b.index;
 	if (ERR_ON(ret < 0, "fimc0: VIDIOC_DQBUF: %s\n", ERRSTR)) {
 		return -errno;
 	}
-	printf("%s -\n", __func__);
+	log(DEBUG,"%s -\n", __func__);
 	return 0;
 }
 
@@ -820,7 +781,7 @@ int fimc0_out_dbuf(int *index) {
  ***********************************************************/
 void process_cam_to_fimc0_to_lcd() {
 	int index;
-	printf("%d +\n", index);
+	log(DEBUG,"%d +\n", index);
 	cam_cap_dbuf(&index);
 	memcpy(fimc0_src_buf[index].start, cam_buffers[index].start,
 			fimc0_src_buf_length);
@@ -834,9 +795,33 @@ void process_cam_to_fimc0_to_lcd() {
 	//fimc0_out_dbuf(&index);
 	memcpy(fb_buf, fimc0_dst_buf[index].start, fimc0_dst_buf_length);
 
-  printf("%s -,index:%d\n",__func__, index);
+	log(DEBUG,"%s -,index:%d\n", __func__, index);
 }
 
+void memcpySpe(void *fb_buf, void *fimc0_dst_buf, int length)
+{
+	//test 400*240 at point specified
+	#define W 400
+	#define H 240
+	#define x 400
+	#define y 240
+	fb_buf=(int*)fb_buf;
+	fimc0_dst_buf=(int *)fimc0_dst_buf;
+	int* src,*dst;
+	src=fimc0_dst_buf;
+	dst=fb_buf+y*800+x;
+
+	int i,j;
+
+	for(i=H;i>0;i--)
+	{
+		for(j=W;j>0;j--)
+		{*dst++=*src++;}
+		dst+=400;
+		src+=400;
+	}
+
+}
 /***********************************************************
  * Function:       //
  * Description:    //
@@ -867,7 +852,7 @@ int mainloop(int cam_fd) {
 			//++nfds;
 
 			r = poll(fds, 1, -1);
-			printf("r=%d ,, fds[0].revents=%d\n", r, fds[0].revents);
+			log(DEBUG,"r=%d ,fds[0].revents=%d\n", r, fds[0].revents);
 			if (-1 == r) {
 				if ( EINTR == errno) {
 					continue;
@@ -877,7 +862,7 @@ int mainloop(int cam_fd) {
 				exit( EXIT_FAILURE);
 			}
 			if (0 == r) {
-				printf("t out");
+				log(DEBUG,"t out");
 				fprintf( stderr, "select Timeout\n");
 				exit( EXIT_FAILURE);
 			}
@@ -895,22 +880,23 @@ int mainloop(int cam_fd) {
 				fimc0_out_dbuf(&index);
 
 				//fimc0_out_dbuf(&index);
-				memcpy(fb_buf, fimc0_dst_buf[index].start,
-						fimc0_dst_buf_length);
+				//memcpy(fb_buf, fimc0_dst_buf[index].start,fimc0_dst_buf_length);
+				memcpySpe(fb_buf, fimc0_dst_buf[index].start,fimc0_dst_buf_length);
+
 				gettimeofday(&end, NULL);
 				time_use = (end.tv_sec - start.tv_sec) * 1000000
 						+ (end.tv_usec - start.tv_usec);
-				printf("time_use is %dms\n", time_use / 1000);
+				log(DEBUG,"time_use is %dms\n", time_use / 1000);
 			}
 			if (fds[1].revents & POLLIN) {
-				printf("fimc0 has data to read\n");
+				log(DEBUG,"fimc0 has data to read\n");
 				fimc0_out_dbuf(&index);
 				memcpy(fb_buf, fimc0_dst_buf[index].start,
 						fimc0_dst_buf_length);
 
 			}
 			if (fds[1].revents & POLLOUT) {
-				printf("fimc0 can be write now\n");
+				log(DEBUG,"fimc0 can be write now\n");
 				fimc0_out_qbuf(index);
 			}
 		}
