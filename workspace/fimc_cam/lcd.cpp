@@ -60,6 +60,11 @@ int lcd::init_lcd_device()
 	fbinfo.color_bits=vinfo.bits_per_pixel;
 
 
+	dis_f.x=0;
+	dis_f.y=0;
+	dis_f.width=fbinfo.xres;
+	dis_f.height=fbinfo.yres;
+
 	log(INFO,"vinfo.xres:%d, vinfo.yres:%d, vinfo.bits_per_pixel:%d, lcd_buf_size:%d, finfo.line_length:%d\n",
 					vinfo.xres, vinfo.yres, vinfo.bits_per_pixel, lcd_buf_size,
 					finfo.line_length);
@@ -99,4 +104,51 @@ void lcd::get_info(){
 	std::cout<<"lcd_file_path"<<lcd_path<<std::endl;
 	std::cout<<"lcd_xres: "<<fbinfo.xres<<"lcd_yres: "<<fbinfo.yres<<"lcd_bits: "<<fbinfo.color_bits<<std::endl;
 	std::cout<<"lcd_buf_address: 0x"<<std::hex<<fb_buf<<std::endl;
+}
+
+/*  15-6-9 19:21 add get&set_display_format() and display() untested */
+
+struct display_format lcd::get_display_format(){
+		return dis_f;
+}
+int lcd::set_display_format(struct display_format f){
+		if (f.x>=0 &&f.x<=fbinfo.xres) dis_f.x=f.x;
+		else dis_f.x=0;
+		if (f.y>=0 &&f.y<=fbinfo.yres) dis_f.y=f.y;
+		else dis_f.y=0;
+
+		if ((f.height<=0)||(f.width<=0)) return -1;
+
+		if ((f.x+f.width)>=0 &&(f.x+f.width)<fbinfo.xres) dis_f.width=f.width;
+		else dis_f.width=fbinfo.xres-f.x;
+		if ((f.y+f.height)>=0 &&(f.y+f.height)<fbinfo.yres) dis_f.height=f.height;
+		else dis_f.height=fbinfo.yres-f.y;
+		return 0;
+}
+
+
+void lcd::display(void * fb_src_buf)
+{
+	//test 400*240 at point specified
+	//#define W 400
+	//#define H 240
+	///#define x 400
+	//#define y 240
+	fb_src_buf=(int *)fb_src_buf;
+	fb_buf=(int*)fb_buf;
+
+	int* src,*dst;
+	src=fb_src_buf;
+	dst=fb_buf+dis_f.y*fbinfo.xres+dis_f.x;
+
+	int i,j;
+
+	for(i=dis_f.height;i>0;i--)
+	{
+		for(j=dis_f.width;j>0;j--)
+		{*dst++=*src++;}
+		dst+=fbinfo.xres-dis_f.width;
+		src+=fbinfo.xres-dis_f.width;
+	}
+
 }

@@ -23,12 +23,21 @@ struct fb_info{
 	unsigned long color_bits;
 
 };
+struct display_format{
+	unsigned long x;
+	unsigned long y;
+	unsigned long width;
+	unsigned long height;
+};
 
 class lcd{
 public:
 	lcd(std::string &);
 	~lcd();
 	void get_info();
+	struct display_format get_display_format();
+	int set_display_format(struct display_format);
+	void display(void*);
 
 private:
 	int open_lcd_device();
@@ -39,6 +48,7 @@ private:
 	int lcd_buf_size;
 	void * fb_buf;
 	struct fb_info fbinfo;
+	struct display_format dis_f;
 
 };
 
