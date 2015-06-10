@@ -38,11 +38,12 @@
 #include "debug.h"
 
 #include "log.h"
+#include "lcd.h"
 #define LEVEL 1
 
 #define TimeOut 5
 
-#define CapNum 10
+#define CapNum 109
 
 #define CapWidth	640
 #define CapHeight	480
@@ -63,12 +64,17 @@ typedef struct {
 	int bytesused;
 } BUFTYPE;
 
+BUFTYPE *fimc0_src_buf;
+BUFTYPE *cam_buffers;
+BUFTYPE *fimc0_dst_buf;
+
 char lcd_path[] = "/dev/fb0";
 char fimc0_path[] = "/dev/video1";
 char cam_path[] = "/dev/video0";
 void * cambuf = NULL;
 #define CHECKNUM 8
 
+//用于测试是否具备对应能力
 struct {
 	unsigned int type;
 	char *name;
@@ -80,9 +86,7 @@ struct {
 		"V4L2_CAP_VIDEO_M2M_MPLANE" }, { 0x00004000, "V4L2_CAP_VIDEO_M2M" }, {
 		V4L2_CAP_STREAMING, "V4L2_CAP_STREAMING" } };
 
-BUFTYPE *fimc0_src_buf;
-BUFTYPE *cam_buffers;
-BUFTYPE *fimc0_dst_buf;
+
 
 static int n_buffer = 0;
 void *fimc_in = NULL;
@@ -116,11 +120,11 @@ int display_format(int pixelformat) {
 	return 0;
 }
 
-struct format {
+/*struct format {
 	unsigned long fourcc;
 	unsigned long width;
 	unsigned long height;
-};
+};*/
 
 /***********************************************************
  * Function:       //
@@ -158,7 +162,6 @@ int open_lcd_device() {
 		exit( EXIT_FAILURE);
 	}
 	log(DEBUG,"open lcd success %d\n", fd);
-	//printf("open lcd success %d\n", fd);
 
 	if (-1 == ioctl(fd, FBIOGET_FSCREENINFO, &finfo)) {
 		perror("Fail to ioctl:FBIOGET_FSCREENINFO\n");
@@ -827,7 +830,7 @@ void memcpySpe(void *fb_buf, void *fimc0_dst_buf, int length)
  * Description:    //
  * Others:         //
  ***********************************************************/
-int mainloop(int cam_fd) {
+int mainloop(int cam_fd,lcd & lcddev) {
 	int count = 1; //CapNum;
 	//clock_t startTime, finishTime;
 	//double selectTime, frameTime;
@@ -881,8 +884,8 @@ int mainloop(int cam_fd) {
 
 				//fimc0_out_dbuf(&index);
 				//memcpy(fb_buf, fimc0_dst_buf[index].start,fimc0_dst_buf_length);
-				memcpySpe(fb_buf, fimc0_dst_buf[index].start,fimc0_dst_buf_length);
-
+				//memcpySpe(fb_buf, fimc0_dst_buf[index].start,fimc0_dst_buf_length);
+				lcddev.display(fimc0_dst_buf[index].start);
 				gettimeofday(&end, NULL);
 				time_use = (end.tv_sec - start.tv_sec) * 1000000
 						+ (end.tv_usec - start.tv_usec);
@@ -966,15 +969,18 @@ void close_camer_device(int lcd_fd, int cam_fd) {
  * Others:         //
  ***********************************************************/
 int main() {
-	open_lcd_device();
+	//open_lcd_device();
+	lcd lcddev("/dev/fb0");
+	struct display_format dis_f={50,100,400,240};
+	lcddev.set_display_format(dis_f);
 	open_camera_device();
-	init_device(lcd_fd, cam_fd);
+	init_device();
 	start_capturing(cam_fd);
 	//pthread_create( &capture_tid, NULL, cam_thread, (void *)NULL );
 	//pthread_create(&display_tid,NULL,display_thread,(void *)NULL);
 	//char * cambuf=calloc(1,640*480*2);
 	while (1) {
-		mainloop(cam_fd);
+		mainloop(cam_fd,lcddev);
 		//process_cam_to_fimc0_to_lcd( );
 		//sleep( 1 );
 	}
