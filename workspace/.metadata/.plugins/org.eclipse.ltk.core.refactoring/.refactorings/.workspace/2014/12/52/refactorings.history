@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<session version="1.0">
-<refactoring comment="Delete resource &apos;fimccam/cam_fimc.c&apos;" deleteContents="false" description="Delete resource &apos;fimccam/cam_fimc.c&apos;" element1="/fimccam/cam_fimc.c" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1419255969180"/>
-</session>

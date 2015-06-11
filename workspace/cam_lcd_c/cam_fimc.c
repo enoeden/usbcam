@@ -38,12 +38,11 @@
 #include "debug.h"
 
 #include "log.h"
-#include "lcd.h"
 #define LEVEL 1
 
 #define TimeOut 5
 
-#define CapNum 109
+#define CapNum 10
 
 #define CapWidth	640
 #define CapHeight	480
@@ -52,7 +51,7 @@
 
 #define IsRearCamera 0
 
-#define  FPS 20
+#define  FPS 10
 
 #define PIXELFMT V4L2_PIX_FMT_YUYV
 
@@ -587,7 +586,7 @@ int init_device() {
 	fimc0_setfmt();
 	fimc0_reqbufs();
 
-	////cam_setrate();
+	//cam_setrate();
 	log(DEBUG,"%s -\n", __func__);
 	return 0;
 }
@@ -883,8 +882,9 @@ int mainloop(int cam_fd) {
 				fimc0_out_dbuf(&index);
 
 				//fimc0_out_dbuf(&index);
-				//memcpy(fb_buf, fimc0_dst_buf[index].start,fimc0_dst_buf_length);
-				memcpySpe(fb_buf, fimc0_dst_buf[index].start,fimc0_dst_buf_length);
+				memcpy(fb_buf, fimc0_dst_buf[index].start,fimc0_dst_buf_length);
+				//memcpy(fb_buf, fimc0_dst_buf[index].start,800*480);
+				//memcpySpe(fb_buf, fimc0_dst_buf[index].start,fimc0_dst_buf_length);
 
 				gettimeofday(&end, NULL);
 				time_use = (end.tv_sec - start.tv_sec) * 1000000
@@ -970,7 +970,8 @@ void close_camer_device(int lcd_fd, int cam_fd) {
  ***********************************************************/
 int main() {
 	open_lcd_device();
-	init_device();
+	open_camera_device( );
+	init_device( lcd_fd, cam_fd );
 	start_capturing(cam_fd);
 	//pthread_create( &capture_tid, NULL, cam_thread, (void *)NULL );
 	//pthread_create(&display_tid,NULL,display_thread,(void *)NULL);

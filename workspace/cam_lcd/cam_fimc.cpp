@@ -487,7 +487,7 @@ int fimc0_reqbufs() {
 	CLEAR(fmt);
 	fmt.type = V4L2_BUF_TYPE_VIDEO_OVERLAY;
 	fmt.fmt.win.w.height = 480;
-	fmt.fmt.win.w.width = 400;
+	fmt.fmt.win.w.width = 800;
 	fmt.fmt.win.w.left = 0;
 	fmt.fmt.win.w.top = 0;
 	if (-1 == ioctl(fimc0_fd, VIDIOC_S_FMT, &fmt)) {
@@ -721,18 +721,8 @@ int fimc0_out_qbuf(int index) {
 
 	b.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
 	b.memory = V4L2_MEMORY_MMAP;
-	//b.memory = V4L2_MEMORY_USERPTR;
 	b.index = index;
-	//b.m.userptr=(long)cam_buffers[index].start;
-	//b.m.userptr = (unsigned long) fimc0_src_buf[index].start;
 
-	//printf("idx : %d  fimc buf start :%lx \n", index, b.m.userptr);
-	//b.m.userptr	   = (unsigned long)fimc0_out_buf[index].start;
-	//b.length	   = (unsigned long)fimc0_out_buf[index].length;
-	//b.bytesused	   = fimc0_out_buf[index].length;
-
-	//printf("fimc0_out_buf:0x%08lx,length:%d,byteused:%d\n",fimc0_out_buf[index].start,  fimc0_out_buf[index].length, fimc0_out_buf[index].bytesused);
-	//process_image(fimc0_out_buf[index].start,0);
 	ret = ioctl(fimc0_fd, VIDIOC_QBUF, &b);
 
 	if (ERR_ON(ret < 0, "fimc0: VIDIOC_QBUF: %s\n", ERRSTR)) {
@@ -770,9 +760,9 @@ int fimc0_out_dbuf(int *index) {
 	}
 #endif
 	*index = b.index;
-	//if (ERR_ON(ret < 0, "fimc0: VIDIOC_DQBUF: %s\n", ERRSTR)) {
-	//	return -errno;
-	//}
+	if (ERR_ON(ret < 0, "fimc0: VIDIOC_DQBUF: %s\n", ERRSTR)) {
+	return -errno;
+	}
 	log(DEBUG,"%s -\n", __func__);
 	return 0;
 }
@@ -782,7 +772,7 @@ int fimc0_out_dbuf(int *index) {
  * Description:    //
  * Others:         //
  ***********************************************************/
-void process_cam_to_fimc0_to_lcd() {
+void process_cam_to_fimc0_to_lcd(lcd &lcddev) {
 	int index;
 	log(DEBUG,"%d +\n", index);
 	cam_cap_dbuf(&index);
@@ -795,9 +785,8 @@ void process_cam_to_fimc0_to_lcd() {
 
 	fimc0_out_dbuf(&index);
 
-	//fimc0_out_dbuf(&index);
-	memcpy(fb_buf, fimc0_dst_buf[index].start, fimc0_dst_buf_length);
-
+	//memcpy(fb_buf, fimc0_dst_buf[index].start, fimc0_dst_buf_length);
+	lcddev.display(fimc0_dst_buf[index].start);
 	log(DEBUG,"%s -,index:%d\n", __func__, index);
 }
 
@@ -873,23 +862,20 @@ int mainloop(int cam_fd,lcd & lcddev) {
 				cam_cap_dbuf(&index);
 				memcpy(fimc0_src_buf[index].start, cam_buffers[index].start,
 						fimc0_src_buf_length);
-
-				fimc0_out_qbuf(index);
-
 				cam_cap_qbuf(index);
-
+				fimc0_out_qbuf(index);
 				fimc0_out_dbuf(&index);
 
-				//fimc0_out_dbuf(&index);
 				//memcpy(fb_buf, fimc0_dst_buf[index].start,fimc0_dst_buf_length);
-				//memcpySpe(fb_buf, fimc0_dst_buf[index].start,fimc0_dst_buf_length);
+				//memcpy(fb_buf, fimc0_dst_buf[index].start,800*480);
+				//memcpySpe(fb_buf, fimc0_dst_buf[index].start,800*480*2);
 				lcddev.display(fimc0_dst_buf[index].start);
 				gettimeofday(&end, NULL);
 				time_use = (end.tv_sec - start.tv_sec) * 1000000
 						+ (end.tv_usec - start.tv_usec);
 				log(DEBUG,"time_use is %dms\n", time_use / 1000);
 			}
-			if (fds[1].revents & POLLIN) {
+			/*if (fds[1].revents & POLLIN) {
 				log(DEBUG,"fimc0 has data to read\n");
 				fimc0_out_dbuf(&index);
 				memcpy(fb_buf, fimc0_dst_buf[index].start,
@@ -899,7 +885,7 @@ int mainloop(int cam_fd,lcd & lcddev) {
 			if (fds[1].revents & POLLOUT) {
 				log(DEBUG,"fimc0 can be write now\n");
 				fimc0_out_qbuf(index);
-			}
+			}*/
 		}
 	}
 	return 0;
@@ -970,7 +956,7 @@ int main() {
 	//open_lcd_device();
 	std::string str="/dev/fb0";
 	lcd lcddev(str);
-	struct display_format dis_f={50,100,300,300};
+	struct display_format dis_f={0,0,100,100};
 	lcddev.set_display_format(dis_f);
 	open_camera_device();
 	init_device();
@@ -980,7 +966,7 @@ int main() {
 	//char * cambuf=calloc(1,640*480*2);
 	while (1) {
 		mainloop(cam_fd,lcddev);
-		//process_cam_to_fimc0_to_lcd( );
+		//process_cam_to_fimc0_to_lcd(lcddev );
 		//sleep( 1 );
 	}
 	stop_capturing(cam_fd);

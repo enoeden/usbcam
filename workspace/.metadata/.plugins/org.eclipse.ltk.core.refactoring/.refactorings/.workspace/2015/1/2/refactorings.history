@@ -1,3 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<session version="1.0">&#x0A;<refactoring comment="Delete resource &apos;fimc_cam/cam_fimc.c&apos;" deleteContents="false" description="Delete resource &apos;fimc_cam/cam_fimc.c&apos;" element1="/fimc_cam/cam_fimc.c" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1420377181427"/>&#x0A;<refactoring comment="Delete resource &apos;fimc_cam/cam_fimc.c&apos;" deleteContents="false" description="Delete resource &apos;fimc_cam/cam_fimc.c&apos;" element1="/fimc_cam/cam_fimc.c" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1420572333213"/>
-</session>
